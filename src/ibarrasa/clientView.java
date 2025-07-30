@@ -8,7 +8,9 @@ import javax.swing.*;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import javax.swing.table.DefaultTableModel;
 
 /**
@@ -21,6 +23,107 @@ import javax.swing.table.DefaultTableModel;
 
 
 public class clientView extends javax.swing.JFrame {
+    
+    private void inicializarChatbot() {
+    cargarCategorias();
+    responses.setText("");
+    responses.append("Ibarrin: ¡Hola! Por favor, escriba la categoría que desea consultar:\n");
+    for (String cat : categorias) {
+        if (!cat.equalsIgnoreCase("Sin categoría")) {  
+            responses.append("- " + cat + "\n");
+        }
+    }
+    estadoChatbot = 0;
+}
+
+    
+    int estadoChatbot = 0;  // 0 = esperando categoría, 1 = esperando producto, 2 = esperando consulta
+String categoriaSeleccionada = null;
+ItemProducto productoSeleccionado = null;
+List<ItemProducto> productosEnCategoria = new ArrayList<>();
+
+    
+    private List<ItemProducto> cargarProductosPorCategoria(String categoria) {
+    List<ItemProducto> productos = new ArrayList<>();
+    try {
+        Connection conn = connection.getMySQLConnection();
+        String sql = "SELECT id, nombre FROM productos WHERE categoria = ?";
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ps.setString(1, categoria);
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            int id = rs.getInt("id");
+            String nombre = rs.getString("nombre");
+            productos.add(new ItemProducto(id, nombre));
+        }
+
+        rs.close();
+        ps.close();
+        conn.close();
+
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error cargando productos: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+    return productos;
+}
+
+    
+    
+    Set<String> categorias = new LinkedHashSet<>(); 
+
+private void cargarCategorias() {
+    categorias.clear();
+    try {
+        Connection conn = connection.getMySQLConnection();
+        String sql = "SELECT DISTINCT categoria FROM productos ORDER BY categoria";
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            categorias.add(rs.getString("categoria"));
+        }
+
+        rs.close();
+        ps.close();
+        conn.close();
+
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error cargando categorías: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+}
+
+    
+    List<ItemProducto> listaProductos = new ArrayList<>();
+    
+    
+    private void cargarProductos() {
+    listaProductos.clear();
+    try {
+        Connection conn = connection.getMySQLConnection();
+        String sql = "SELECT id, nombre FROM productos";
+        PreparedStatement ps = conn.prepareStatement(sql);
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            int id = rs.getInt("id");
+            String nombre = rs.getString("nombre");
+            listaProductos.add(new ItemProducto(id, nombre));
+        }
+
+        rs.close();
+        ps.close();
+        conn.close();
+
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error cargando productos: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+}
+
+
     
     private void cargarPedidosEnTabla() {
     DefaultTableModel modelo = new DefaultTableModel();
@@ -278,7 +381,8 @@ public class clientView extends javax.swing.JFrame {
         cargarCotizaciones(idCliente);
         cargarPedidosEnTabla();
         prepararNuevaCotizacion();
-        
+        cargarProductos();
+        inicializarChatbot();
     }
 
     /**
@@ -322,6 +426,10 @@ public class clientView extends javax.swing.JFrame {
         newPrice = new javax.swing.JTextField();
         searchItem = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
+        jScrollPane5 = new javax.swing.JScrollPane();
+        responses = new javax.swing.JTextArea();
+        message = new javax.swing.JTextField();
+        send = new javax.swing.JButton();
 
         deleteItem.setText("Eliminar");
         deleteItem.addActionListener(new java.awt.event.ActionListener() {
@@ -578,15 +686,41 @@ public class clientView extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Nueva Cotización", jPanel2);
 
+        responses.setColumns(20);
+        responses.setRows(5);
+        jScrollPane5.setViewportView(responses);
+
+        send.setText("Enviar");
+        send.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                sendActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel3Layout = new javax.swing.GroupLayout(jPanel3);
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 675, Short.MAX_VALUE)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane5, javax.swing.GroupLayout.DEFAULT_SIZE, 651, Short.MAX_VALUE)
+                    .addGroup(jPanel3Layout.createSequentialGroup()
+                        .addComponent(message)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(send)))
+                .addContainerGap())
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 348, Short.MAX_VALUE)
+            .addGroup(jPanel3Layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(jScrollPane5, javax.swing.GroupLayout.PREFERRED_SIZE, 216, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(message, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(send))
+                .addContainerGap(89, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Ibarrín", jPanel3);
@@ -1072,6 +1206,104 @@ try {
     }
     }//GEN-LAST:event_cancelPedActionPerformed
 
+    private void sendActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sendActionPerformed
+        String entrada = message.getText().trim().toLowerCase();
+        if (entrada.isEmpty()) return;
+
+        responses.append("Cliente: " + entrada + "\n");
+
+        switch (estadoChatbot) {
+            case 0: // Esperando categoría
+                boolean catEncontrada = false;
+                for (String cat : categorias) {
+                    if (cat.toLowerCase().equals(entrada)) {
+                        categoriaSeleccionada = cat;
+                        catEncontrada = true;
+                        productosEnCategoria = cargarProductosPorCategoria(categoriaSeleccionada);
+
+                        responses.append("Ibarrin: Has seleccionado la categoría '" + categoriaSeleccionada + "'.\n");
+                        responses.append("Ibarrin: Los productos disponibles son:\n");
+                        for (ItemProducto p : productosEnCategoria) {
+                            responses.append("- " + p.getNombre() + "\n");
+                        }
+                        responses.append("Ibarrin: Por favor, escriba el nombre del producto que desea consultar.\n");
+                        estadoChatbot = 1;
+                        break;
+                    }
+                }
+                if (!catEncontrada) {
+                    responses.append("Ibarrin: Categoría no reconocida. Por favor, escriba alguna de las categorías listadas.\n");
+                }
+                break;
+
+            case 1: // Esperando producto
+                productoSeleccionado = null;
+                for (ItemProducto p : productosEnCategoria) {
+                    if (p.getNombre().toLowerCase().contains(entrada)) {
+                        productoSeleccionado = p;
+                        break;
+                    }
+                }
+                if (productoSeleccionado != null) {
+                    responses.append("Ibarrin: Producto '" + productoSeleccionado.getNombre() + "' seleccionado.\n");
+                    responses.append("Ibarrin: ¿Qué desea saber? Puede escribir: descripción, precio o stock.\n");
+                    estadoChatbot = 2;
+                } else {
+                    responses.append("Ibarrin: Producto no encontrado en la categoría '" + categoriaSeleccionada + "'. Por favor, intente de nuevo.\n");
+                }
+                break;
+
+            case 2: // Esperando consulta
+                if (productoSeleccionado == null) {
+                    responses.append("Ibarrin: Error interno. Por favor, reinicie la consulta escribiendo 'reiniciar'.\n");
+                    break;
+                }
+
+                if (entrada.equals("reiniciar")) {
+                    categoriaSeleccionada = null;
+                    productoSeleccionado = null;
+                    productosEnCategoria.clear();
+                    inicializarChatbot();
+                    break;
+                }
+
+                try {
+                    Connection conn = connection.getMySQLConnection();
+                    String sql = "SELECT descripcion, precio, stock FROM productos WHERE id = ?";
+                    PreparedStatement ps = conn.prepareStatement(sql);
+                    ps.setInt(1, productoSeleccionado.getId());
+                    ResultSet rs = ps.executeQuery();
+
+                    if (rs.next()) {
+                        if (entrada.contains("descripción")) {
+                            responses.append("Ibarrin: " + rs.getString("descripcion") + "\n");
+                        } else if (entrada.contains("precio")) {
+                            responses.append("Ibarrin: El precio es $" + rs.getDouble("precio") + "\n");
+                        } else if (entrada.contains("stock")) {
+                            responses.append("Ibarrin: Quedan " + rs.getInt("stock") + " unidades disponibles.\n");
+                        } else {
+                            responses.append("Ibarrin: No entendí. Por favor escriba: descripción, precio o stock.\n");
+                        }
+                    } else {
+                        responses.append("Ibarrin: No pude obtener detalles del producto.\n");
+                    }
+
+                    rs.close();
+                    ps.close();
+                    conn.close();
+
+                } catch (SQLException ex) {
+                    responses.append("Ibarrin: Error consultando base de datos.\n");
+                    ex.printStackTrace();
+                }
+
+                responses.append("Ibarrin: Si desea consultar otro producto escriba 'reiniciar'.\n");
+                break;
+        }
+
+        message.setText("");
+    }//GEN-LAST:event_sendActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -1129,15 +1361,19 @@ try {
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JScrollPane jScrollPane3;
     private javax.swing.JScrollPane jScrollPane4;
+    private javax.swing.JScrollPane jScrollPane5;
     private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JTextField message;
     private javax.swing.JTable newCotTable;
     private javax.swing.JTextField newPrice;
     private javax.swing.JButton pdf;
     private javax.swing.JTextField priceField;
     private javax.swing.JComboBox<String> productBox;
+    private javax.swing.JTextArea responses;
     private javax.swing.JButton saveCot;
     private javax.swing.JTextField searchField;
     private javax.swing.JButton searchItem;
+    private javax.swing.JButton send;
     private javax.swing.JTable tablePedidos;
     private javax.swing.JButton viewCot;
     private javax.swing.JTable viewCotTable;
