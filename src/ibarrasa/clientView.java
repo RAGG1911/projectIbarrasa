@@ -1341,93 +1341,6 @@ try {
     }
     }//GEN-LAST:event_buyActionPerformed
 
-    private void cancelPedActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelPedActionPerformed
-        int filaSeleccionada = tablePedidos.getSelectedRow();
-
-    if (filaSeleccionada == -1) {
-        JOptionPane.showMessageDialog(null, "Seleccione un pedido para cancelar.");
-        return;
-    }
-
-    String nombrePedido = tablePedidos.getValueAt(filaSeleccionada, 0).toString();
-
-    int confirm = JOptionPane.showConfirmDialog(null,
-        "¿Está seguro de cancelar el pedido: " + nombrePedido + "?",
-        "Confirmar cancelación", JOptionPane.YES_NO_OPTION);
-
-    if (confirm != JOptionPane.YES_OPTION) return;
-
-    try {
-        Connection[] conexiones = {
-            connection.getMySQLConnection(),
-            connection.getAWSConnection(),
-            connection.getMariaDBConnection()
-        };
-
-        for (Connection con : conexiones) {
-            if (con == null) continue;
-
-            // Buscar ID del pedido
-            int pedidoId = -1;
-            PreparedStatement psBuscar = con.prepareStatement(
-                "SELECT id FROM pedidos WHERE nombre = ? AND cliente_id = ?"
-            );
-            psBuscar.setString(1, nombrePedido);
-            psBuscar.setInt(2, idCliente);
-            ResultSet rs = psBuscar.executeQuery();
-
-            if (rs.next()) {
-                pedidoId = rs.getInt("id");
-            }
-            rs.close();
-            psBuscar.close();
-
-            if (pedidoId != -1) {
-                // Obtener productos del pedido
-                PreparedStatement psProductos = con.prepareStatement(
-                    "SELECT producto_id, cantidad FROM pedidos_productos WHERE pedido_id = ?"
-                );
-                psProductos.setInt(1, pedidoId);
-                ResultSet rsProductos = psProductos.executeQuery();
-
-                // Restaurar stock
-                while (rsProductos.next()) {
-                    int productoId = rsProductos.getInt("producto_id");
-                    int cantidad = rsProductos.getInt("cantidad");
-
-                    PreparedStatement psActualizarStock = con.prepareStatement(
-                        "UPDATE productos SET stock = stock + ? WHERE id = ?"
-                    );
-                    psActualizarStock.setInt(1, cantidad);
-                    psActualizarStock.setInt(2, productoId);
-                    psActualizarStock.executeUpdate();
-                    psActualizarStock.close();
-                }
-
-                rsProductos.close();
-                psProductos.close();
-
-                // Eliminar el pedido (se eliminan también los productos por ON DELETE CASCADE)
-                PreparedStatement psEliminar = con.prepareStatement(
-                    "DELETE FROM pedidos WHERE id = ?"
-                );
-                psEliminar.setInt(1, pedidoId);
-                psEliminar.executeUpdate();
-                psEliminar.close();
-            }
-
-            con.close();
-        }
-
-        JOptionPane.showMessageDialog(null, "Pedido cancelado y stock restaurado.");
-        cargarPedidosEnTabla(); // Refrescar tabla
-
-    } catch (SQLException ex) {
-        JOptionPane.showMessageDialog(null, "Error al cancelar el pedido: " + ex.getMessage());
-        ex.printStackTrace();
-    }
-    }//GEN-LAST:event_cancelPedActionPerformed
-
     private void sendActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sendActionPerformed
         String entrada = message.getText().trim().toLowerCase();
         if (entrada.isEmpty()) return;
@@ -1540,6 +1453,93 @@ try {
     int pedidoId = (int) tablePedidos.getValueAt(filaSel, 0); 
     exportarFacturaPedido(pedidoId);
     }//GEN-LAST:event_pedPDFActionPerformed
+
+    private void cancelPedActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelPedActionPerformed
+        int filaSeleccionada = tablePedidos.getSelectedRow();
+
+        if (filaSeleccionada == -1) {
+            JOptionPane.showMessageDialog(null, "Seleccione un pedido para cancelar.");
+            return;
+        }
+
+        String nombrePedido = tablePedidos.getValueAt(filaSeleccionada, 0).toString();
+
+        int confirm = JOptionPane.showConfirmDialog(null,
+            "¿Está seguro de cancelar el pedido: " + nombrePedido + "?",
+            "Confirmar cancelación", JOptionPane.YES_NO_OPTION);
+
+        if (confirm != JOptionPane.YES_OPTION) return;
+
+        try {
+            Connection[] conexiones = {
+                connection.getMySQLConnection(),
+                connection.getAWSConnection(),
+                connection.getMariaDBConnection()
+            };
+
+            for (Connection con : conexiones) {
+                if (con == null) continue;
+
+                // Buscar ID del pedido
+                int pedidoId = -1;
+                PreparedStatement psBuscar = con.prepareStatement(
+                    "SELECT id FROM pedidos WHERE nombre = ? AND cliente_id = ?"
+                );
+                psBuscar.setString(1, nombrePedido);
+                psBuscar.setInt(2, idCliente);
+                ResultSet rs = psBuscar.executeQuery();
+
+                if (rs.next()) {
+                    pedidoId = rs.getInt("id");
+                }
+                rs.close();
+                psBuscar.close();
+
+                if (pedidoId != -1) {
+                    // Obtener productos del pedido
+                    PreparedStatement psProductos = con.prepareStatement(
+                        "SELECT producto_id, cantidad FROM pedidos_productos WHERE pedido_id = ?"
+                    );
+                    psProductos.setInt(1, pedidoId);
+                    ResultSet rsProductos = psProductos.executeQuery();
+
+                    // Restaurar stock
+                    while (rsProductos.next()) {
+                        int productoId = rsProductos.getInt("producto_id");
+                        int cantidad = rsProductos.getInt("cantidad");
+
+                        PreparedStatement psActualizarStock = con.prepareStatement(
+                            "UPDATE productos SET stock = stock + ? WHERE id = ?"
+                        );
+                        psActualizarStock.setInt(1, cantidad);
+                        psActualizarStock.setInt(2, productoId);
+                        psActualizarStock.executeUpdate();
+                        psActualizarStock.close();
+                    }
+
+                    rsProductos.close();
+                    psProductos.close();
+
+                    // Eliminar el pedido (se eliminan también los productos por ON DELETE CASCADE)
+                    PreparedStatement psEliminar = con.prepareStatement(
+                        "DELETE FROM pedidos WHERE id = ?"
+                    );
+                    psEliminar.setInt(1, pedidoId);
+                    psEliminar.executeUpdate();
+                    psEliminar.close();
+                }
+
+                con.close();
+            }
+
+            JOptionPane.showMessageDialog(null, "Pedido cancelado y stock restaurado.");
+            cargarPedidosEnTabla(); // Refrescar tabla
+
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(null, "Error al cancelar el pedido: " + ex.getMessage());
+            ex.printStackTrace();
+        }
+    }//GEN-LAST:event_cancelPedActionPerformed
 
     /**
      * @param args the command line arguments

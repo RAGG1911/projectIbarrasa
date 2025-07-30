@@ -60,19 +60,28 @@
           <Layout>
             <DimensionLayout dim="0">
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="jScrollPane1" pref="627" max="32767" attributes="0"/>
-                          <Group type="102" alignment="1" attributes="0">
-                              <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="-2" attributes="0"/>
-                              <Component id="statusBox" min="-2" max="-2" attributes="0"/>
+                          <Group type="102" attributes="0">
+                              <EmptySpace min="12" pref="12" max="-2" attributes="0"/>
+                              <Component id="statUpdate" min="-2" max="-2" attributes="0"/>
                               <EmptySpace max="32767" attributes="0"/>
-                              <Component id="cancelPed" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="jScrollPane1" pref="627" max="32767" attributes="0"/>
+                                  <Group type="102" alignment="1" attributes="0">
+                                      <Component id="jLabel2" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="-2" attributes="0"/>
+                                      <Component id="statusBox" min="-2" max="-2" attributes="0"/>
+                                      <EmptySpace max="32767" attributes="0"/>
+                                      <Component id="pedPDF" min="-2" max="-2" attributes="0"/>
+                                  </Group>
+                              </Group>
+                              <EmptySpace max="-2" attributes="0"/>
                           </Group>
                       </Group>
-                      <EmptySpace max="-2" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -83,11 +92,13 @@
                       <Component id="jScrollPane1" min="-2" pref="207" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="cancelPed" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="jLabel2" alignment="3" min="-2" max="-2" attributes="0"/>
                           <Component id="statusBox" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="pedPDF" alignment="3" min="-2" max="-2" attributes="0"/>
                       </Group>
-                      <EmptySpace pref="97" max="32767" attributes="0"/>
+                      <EmptySpace max="-2" attributes="0"/>
+                      <Component id="statUpdate" min="-2" max="-2" attributes="0"/>
+                      <EmptySpace pref="67" max="32767" attributes="0"/>
                   </Group>
               </Group>
             </DimensionLayout>
@@ -103,25 +114,22 @@
                 <Component class="javax.swing.JTable" name="tablePedidos">
                   <Properties>
                     <Property name="model" type="javax.swing.table.TableModel" editor="org.netbeans.modules.form.editors2.TableModelEditor">
-                      <Table columnCount="4" rowCount="4">
-                        <Column editable="true" title="Title 1" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 2" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 3" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 4" type="java.lang.Object"/>
+                      <Table columnCount="6" rowCount="4">
+                        <Column editable="true" title="ID" type="java.lang.Object"/>
+                        <Column editable="true" title="Nombre" type="java.lang.Object"/>
+                        <Column editable="true" title="ID del Cliente" type="java.lang.Object"/>
+                        <Column editable="true" title="Total" type="java.lang.Object"/>
+                        <Column editable="true" title="Fecha" type="java.lang.Object"/>
+                        <Column editable="true" title="Estado" type="java.lang.Object"/>
                       </Table>
                     </Property>
                   </Properties>
                 </Component>
               </SubComponents>
             </Container>
-            <Component class="javax.swing.JButton" name="cancelPed">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Cancelar Pedido"/>
-              </Properties>
-            </Component>
             <Component class="javax.swing.JLabel" name="jLabel2">
               <Properties>
-                <Property name="text" type="java.lang.String" value="Actualizar Estado:"/>
+                <Property name="text" type="java.lang.String" value="Estado:"/>
               </Properties>
             </Component>
             <Component class="javax.swing.JComboBox" name="statusBox">
@@ -138,6 +146,22 @@
               <AuxValues>
                 <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
               </AuxValues>
+            </Component>
+            <Component class="javax.swing.JToggleButton" name="pedPDF">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Exportar PDF"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="pedPDFActionPerformed"/>
+              </Events>
+            </Component>
+            <Component class="javax.swing.JButton" name="statUpdate">
+              <Properties>
+                <Property name="text" type="java.lang.String" value="Actualizar"/>
+              </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="statUpdateActionPerformed"/>
+              </Events>
             </Component>
           </SubComponents>
         </Container>
@@ -156,11 +180,10 @@
                   <Group type="102" attributes="0">
                       <EmptySpace max="-2" attributes="0"/>
                       <Group type="103" groupAlignment="0" attributes="0">
-                          <Component id="jScrollPane2" alignment="0" pref="627" max="32767" attributes="0"/>
+                          <Component id="jScrollPane2" pref="627" max="32767" attributes="0"/>
                           <Group type="102" alignment="0" attributes="0">
-                              <Component id="cancelCot" min="-2" max="-2" attributes="0"/>
-                              <EmptySpace max="32767" attributes="0"/>
                               <Component id="pdf" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                           </Group>
                       </Group>
                       <EmptySpace max="-2" attributes="0"/>
@@ -173,10 +196,7 @@
                       <EmptySpace max="-2" attributes="0"/>
                       <Component id="jScrollPane2" min="-2" pref="207" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="cancelCot" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="pdf" alignment="3" min="-2" max="-2" attributes="0"/>
-                      </Group>
+                      <Component id="pdf" min="-2" max="-2" attributes="0"/>
                       <EmptySpace pref="97" max="32767" attributes="0"/>
                   </Group>
               </Group>
@@ -193,26 +213,25 @@
                 <Component class="javax.swing.JTable" name="tableCot">
                   <Properties>
                     <Property name="model" type="javax.swing.table.TableModel" editor="org.netbeans.modules.form.editors2.TableModelEditor">
-                      <Table columnCount="4" rowCount="4">
-                        <Column editable="true" title="Title 1" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 2" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 3" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 4" type="java.lang.Object"/>
+                      <Table columnCount="5" rowCount="4">
+                        <Column editable="true" title="ID" type="java.lang.Object"/>
+                        <Column editable="true" title="Nombre" type="java.lang.Object"/>
+                        <Column editable="true" title="ID del Cliente" type="java.lang.Object"/>
+                        <Column editable="true" title="Total" type="java.lang.Object"/>
+                        <Column editable="true" title="Fecha" type="java.lang.Object"/>
                       </Table>
                     </Property>
                   </Properties>
                 </Component>
               </SubComponents>
             </Container>
-            <Component class="javax.swing.JButton" name="cancelCot">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Cancelar"/>
-              </Properties>
-            </Component>
             <Component class="javax.swing.JButton" name="pdf">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Descargar PDF"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="pdfActionPerformed"/>
+              </Events>
             </Component>
           </SubComponents>
         </Container>
@@ -233,15 +252,8 @@
                       <Group type="103" groupAlignment="0" attributes="0">
                           <Component id="jScrollPane3" alignment="0" pref="627" max="32767" attributes="0"/>
                           <Group type="102" attributes="0">
-                              <Group type="103" groupAlignment="0" attributes="0">
-                                  <Group type="102" alignment="0" attributes="0">
-                                      <Component id="jLabel1" min="-2" max="-2" attributes="0"/>
-                                      <EmptySpace max="-2" attributes="0"/>
-                                      <Component id="prodSearch" min="-2" pref="74" max="-2" attributes="0"/>
-                                  </Group>
-                                  <Component id="newProd" alignment="0" min="-2" max="-2" attributes="0"/>
-                              </Group>
-                              <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                              <Component id="newProd" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="0" pref="562" max="32767" attributes="0"/>
                           </Group>
                       </Group>
                       <EmptySpace max="-2" attributes="0"/>
@@ -251,14 +263,9 @@
             <DimensionLayout dim="1">
               <Group type="103" groupAlignment="0" attributes="0">
                   <Group type="102" alignment="0" attributes="0">
-                      <EmptySpace min="-2" pref="18" max="-2" attributes="0"/>
-                      <Group type="103" groupAlignment="3" attributes="0">
-                          <Component id="jLabel1" alignment="3" min="-2" max="-2" attributes="0"/>
-                          <Component id="prodSearch" alignment="3" min="-2" max="-2" attributes="0"/>
-                      </Group>
-                      <EmptySpace type="separate" max="-2" attributes="0"/>
-                      <Component id="jScrollPane3" min="-2" pref="207" max="-2" attributes="0"/>
                       <EmptySpace max="-2" attributes="0"/>
+                      <Component id="jScrollPane3" min="-2" pref="238" max="-2" attributes="0"/>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
                       <Component id="newProd" min="-2" max="-2" attributes="0"/>
                       <EmptySpace pref="54" max="32767" attributes="0"/>
                   </Group>
@@ -276,28 +283,25 @@
                 <Component class="javax.swing.JTable" name="tableInven">
                   <Properties>
                     <Property name="model" type="javax.swing.table.TableModel" editor="org.netbeans.modules.form.editors2.TableModelEditor">
-                      <Table columnCount="4" rowCount="4">
-                        <Column editable="true" title="Title 1" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 2" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 3" type="java.lang.Object"/>
-                        <Column editable="true" title="Title 4" type="java.lang.Object"/>
+                      <Table columnCount="5" rowCount="4">
+                        <Column editable="true" title="C&#xf3;digo" type="java.lang.Object"/>
+                        <Column editable="true" title="Nombre" type="java.lang.Object"/>
+                        <Column editable="true" title="Descripci&#xf3;n" type="java.lang.Object"/>
+                        <Column editable="true" title="En Stock" type="java.lang.Object"/>
+                        <Column editable="true" title="Precio" type="java.lang.Object"/>
                       </Table>
                     </Property>
                   </Properties>
                 </Component>
               </SubComponents>
             </Container>
-            <Component class="javax.swing.JLabel" name="jLabel1">
-              <Properties>
-                <Property name="text" type="java.lang.String" value="Buscar por C&#xf3;digo:"/>
-              </Properties>
-            </Component>
-            <Component class="javax.swing.JTextField" name="prodSearch">
-            </Component>
             <Component class="javax.swing.JButton" name="newProd">
               <Properties>
                 <Property name="text" type="java.lang.String" value="Nuevo"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="newProdActionPerformed"/>
+              </Events>
             </Component>
           </SubComponents>
         </Container>
