@@ -3,18 +3,171 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package ibarrasa;
+import java.util.List;
+import javax.swing.*;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import javax.swing.table.DefaultTableModel;
 
 /**
  *
  * @author raul1
  */
-public class clientView extends javax.swing.JFrame {
 
+
+
+
+
+public class clientView extends javax.swing.JFrame {
+    
+    private String generarCodigoCotizacion(Connection con) throws SQLException {
+    String codigo = "COT";
+    String sql = "SELECT COUNT(*) AS total FROM cotizaciones";
+    PreparedStatement ps = con.prepareStatement(sql);
+    ResultSet rs = ps.executeQuery();
+    int count = 0;
+    if (rs.next()) {
+        count = rs.getInt("total");
+    }
+    rs.close();
+    ps.close();
+
+    
+    String numero = String.format("%03d", count + 1);
+    return codigo + numero;  
+}
+
+    
+    private void actualizarTotalCotizacion() {
+    DefaultTableModel model = (DefaultTableModel) newCotTable.getModel();
+    double total = 0.0;
+
+    for (int i = 0; i < model.getRowCount(); i++) {
+        int cantidad = Integer.parseInt(model.getValueAt(i, 2).toString());
+        double precio = Double.parseDouble(model.getValueAt(i, 3).toString());
+        total += cantidad * precio;
+    }
+
+    newPrice.setText(String.format("%.2f", total));
+}
+    
+    private void prepararNuevaCotizacion() {
+    
+    DefaultTableModel model = (DefaultTableModel) newCotTable.getModel();
+    model.setRowCount(0);
+
+    
+    newPrice.setText("");
+
+    
+    itemCant.setText("");
+    searchField.setText("");
+
+    
+    productBox.removeAllItems();
+
+    try {
+        Connection con = connection.getMySQLConnection();
+        String sql = "SELECT id, nombre FROM productos ORDER BY nombre";
+        PreparedStatement ps = con.prepareStatement(sql);
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            int id = rs.getInt("id");
+            String nombre = rs.getString("nombre");
+            ((JComboBox) productBox).addItem(new ItemProducto(id, nombre));
+        }
+
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Error al cargar productos: " + e.getMessage());
+    }
+}
+    
+    public class ItemProducto {
+    private int id;
+    private String nombre;
+
+    public ItemProducto(int id, String nombre) {
+        this.id = id;
+        this.nombre = nombre;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+
+    // Sobrescribe toString correctamente
+    @Override
+    public String toString() {
+        return nombre;  // Esto es lo que se mostrará en el combo
+    }
+}
+    
+    private Map<String, Integer> cotizacionesMap = new HashMap<>();
+    
+ 
+    
+    public class CotizacionItem {
+        private int id;
+        private String nombre;
+
+        public CotizacionItem(int id, String nombre) {
+            this.id = id;
+            this.nombre = nombre;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        @Override
+        public String toString() {
+            return nombre;
+        }
+    }
+    
+    private void cargarCotizaciones(int cliente_id) {
+        DefaultListModel<String> modelo = new DefaultListModel<>();
+        cotizacionesMap.clear(); 
+
+    try {
+        Connection con = connection.getMySQLConnection(); 
+        String sql = "SELECT id, nombre FROM cotizaciones WHERE cliente_id = ?";
+        PreparedStatement ps = con.prepareStatement(sql);
+        ps.setInt(1, cliente_id);
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            int id = rs.getInt("id");
+            String nombre = rs.getString("nombre");
+
+            modelo.addElement(nombre);
+            cotizacionesMap.put(nombre, id); 
+        }
+
+        cotList.setModel(modelo);
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Error al cargar cotizaciones: " + e.getMessage());
+    }
+    }
+    
+    
+    
+    private int idCliente;
     /**
      * Creates new form clientView
      */
-    public clientView() {
-        initComponents();
+    public clientView(int idCliente) {
+        initComponents();        
+        this.idCliente = idCliente;
+        cargarCotizaciones(idCliente);
+        prepararNuevaCotizacion();
     }
 
     /**
@@ -31,20 +184,22 @@ public class clientView extends javax.swing.JFrame {
         jTabbedPane1 = new javax.swing.JTabbedPane();
         jPanel1 = new javax.swing.JPanel();
         jScrollPane1 = new javax.swing.JScrollPane();
-        jList1 = new javax.swing.JList<>();
+        cotList = new javax.swing.JList<>();
         viewCot = new javax.swing.JButton();
         jScrollPane2 = new javax.swing.JScrollPane();
         viewCotTable = new javax.swing.JTable();
         pdf = new javax.swing.JButton();
         buy = new javax.swing.JButton();
         delete = new javax.swing.JButton();
+        jLabel4 = new javax.swing.JLabel();
+        priceField = new javax.swing.JTextField();
         jPanel4 = new javax.swing.JPanel();
         jScrollPane4 = new javax.swing.JScrollPane();
         tablePedidos = new javax.swing.JTable();
         cancelPed = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
-        jComboBox1 = new javax.swing.JComboBox<>();
+        productBox = new javax.swing.JComboBox<>();
         jLabel2 = new javax.swing.JLabel();
         itemCant = new javax.swing.JTextField();
         addItem = new javax.swing.JButton();
@@ -52,23 +207,35 @@ public class clientView extends javax.swing.JFrame {
         newCotTable = new javax.swing.JTable();
         saveCot = new javax.swing.JButton();
         cleanCot = new javax.swing.JButton();
-        jLabel3 = new javax.swing.JLabel();
         searchField = new javax.swing.JTextField();
+        jLabel5 = new javax.swing.JLabel();
+        newPrice = new javax.swing.JTextField();
+        searchItem = new javax.swing.JButton();
         jPanel3 = new javax.swing.JPanel();
 
         deleteItem.setText("Eliminar");
+        deleteItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteItemActionPerformed(evt);
+            }
+        });
         cotMenu.add(deleteItem);
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        jList1.setModel(new javax.swing.AbstractListModel<String>() {
+        cotList.setModel(new javax.swing.AbstractListModel<String>() {
             String[] strings = { "Item 1", "Item 2", "Item 3", "Item 4", "Item 5" };
             public int getSize() { return strings.length; }
             public String getElementAt(int i) { return strings[i]; }
         });
-        jScrollPane1.setViewportView(jList1);
+        jScrollPane1.setViewportView(cotList);
 
         viewCot.setText("Ver");
+        viewCot.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                viewCotActionPerformed(evt);
+            }
+        });
 
         viewCotTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -78,7 +245,7 @@ public class clientView extends javax.swing.JFrame {
                 {null, null, null, null}
             },
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "Nombre", "Descripcion", "Cantidad", "Precio Unitario"
             }
         ));
         jScrollPane2.setViewportView(viewCotTable);
@@ -89,6 +256,8 @@ public class clientView extends javax.swing.JFrame {
 
         delete.setText("Eliminar");
 
+        jLabel4.setText("Total:");
+
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -97,8 +266,8 @@ public class clientView extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jScrollPane1)
-                    .addComponent(viewCot, javax.swing.GroupLayout.DEFAULT_SIZE, 74, Short.MAX_VALUE))
-                .addGap(32, 32, 32)
+                    .addComponent(viewCot, javax.swing.GroupLayout.DEFAULT_SIZE, 88, Short.MAX_VALUE))
+                .addGap(18, 18, 18)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(jPanel1Layout.createSequentialGroup()
                         .addComponent(pdf)
@@ -106,16 +275,26 @@ public class clientView extends javax.swing.JFrame {
                         .addComponent(delete)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                         .addComponent(buy))
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 521, Short.MAX_VALUE))
+                    .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 545, Short.MAX_VALUE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jLabel4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(priceField, javax.swing.GroupLayout.PREFERRED_SIZE, 54, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 225, Short.MAX_VALUE))
+                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 225, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(jPanel1Layout.createSequentialGroup()
+                        .addComponent(jScrollPane2, javax.swing.GroupLayout.PREFERRED_SIZE, 167, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel4)
+                            .addComponent(priceField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(pdf)
@@ -169,7 +348,7 @@ public class clientView extends javax.swing.JFrame {
 
         jLabel1.setText("Producto:");
 
-        jComboBox1.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        productBox.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
 
         jLabel2.setText("Cantidad:");
 
@@ -188,46 +367,63 @@ public class clientView extends javax.swing.JFrame {
                 {null, null, null, null}
             },
             new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
+                "Producto", "Descripción", "Precio Unitario", "Cantidad"
             }
         ));
         newCotTable.setComponentPopupMenu(cotMenu);
         jScrollPane3.setViewportView(newCotTable);
 
         saveCot.setText("Guardar");
+        saveCot.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                saveCotActionPerformed(evt);
+            }
+        });
 
         cleanCot.setText("Limpiar");
 
-        jLabel3.setText("Buscar:");
+        jLabel5.setText("Total:");
+
+        searchItem.setText("Buscar:");
+        searchItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                searchItemActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+            .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                    .addComponent(addItem)
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(jLabel2)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(itemCant, javax.swing.GroupLayout.PREFERRED_SIZE, 57, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(jLabel1)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addComponent(jLabel3)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(searchField)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 61, Short.MAX_VALUE)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(saveCot)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addGap(311, 311, 311)
                         .addComponent(cleanCot))
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 453, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap())
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                        .addGroup(jPanel2Layout.createSequentialGroup()
+                            .addComponent(searchItem)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                            .addComponent(searchField, javax.swing.GroupLayout.PREFERRED_SIZE, 56, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGroup(jPanel2Layout.createSequentialGroup()
+                            .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 53, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addComponent(productBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel2Layout.createSequentialGroup()
+                            .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                .addComponent(jLabel2)
+                                .addComponent(jLabel5))
+                            .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                            .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                                .addComponent(itemCant, javax.swing.GroupLayout.DEFAULT_SIZE, 57, Short.MAX_VALUE)
+                                .addComponent(newPrice))))
+                    .addComponent(addItem))
+                .addContainerGap(59, Short.MAX_VALUE))
         );
         jPanel2Layout.setVerticalGroup(
             jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -236,19 +432,22 @@ public class clientView extends javax.swing.JFrame {
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 214, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(jPanel2Layout.createSequentialGroup()
-                        .addGap(9, 9, 9)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel3)
+                            .addComponent(searchItem)
                             .addComponent(searchField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(18, 18, 18)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel1)
-                            .addComponent(jComboBox1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                            .addComponent(productBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel2)
                             .addComponent(itemCant, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel5)
+                            .addComponent(newPrice, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(addItem)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -263,7 +462,7 @@ public class clientView extends javax.swing.JFrame {
         jPanel3.setLayout(jPanel3Layout);
         jPanel3Layout.setHorizontalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 651, Short.MAX_VALUE)
+            .addGap(0, 675, Short.MAX_VALUE)
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -278,23 +477,251 @@ public class clientView extends javax.swing.JFrame {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 656, Short.MAX_VALUE)
+                .addComponent(jTabbedPane1)
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jTabbedPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 375, Short.MAX_VALUE)
+                .addComponent(jTabbedPane1)
                 .addContainerGap())
         );
 
         pack();
+        setLocationRelativeTo(null);
     }// </editor-fold>//GEN-END:initComponents
 
     private void addItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addItemActionPerformed
-        // TODO add your handling code here:
+        ItemProducto seleccionado = (ItemProducto) productBox.getSelectedItem();
+if (seleccionado == null) {
+    JOptionPane.showMessageDialog(this, "Selecciona un producto.");
+    return;
+}
+
+String cantidadStr = itemCant.getText().trim();
+if (cantidadStr.isEmpty() || !cantidadStr.matches("\\d+")) {
+    JOptionPane.showMessageDialog(this, "Ingresa una cantidad válida.");
+    return;
+}
+
+int cantidad = Integer.parseInt(cantidadStr);
+
+try {
+    Connection con = connection.getMySQLConnection();
+    String sql = "SELECT descripcion, precio, stock FROM productos WHERE id = ?";
+    PreparedStatement ps = con.prepareStatement(sql);
+    ps.setInt(1, seleccionado.getId());
+    ResultSet rs = ps.executeQuery();
+
+    if (rs.next()) {
+        String descripcion = rs.getString("descripcion");
+        double precio = rs.getDouble("precio");
+        int stock = rs.getInt("stock");
+
+        if (cantidad > stock) {
+            JOptionPane.showMessageDialog(this, "No hay suficiente stock disponible (Stock: " + stock + ")");
+            return;
+        }
+
+        // Agregar producto a la tabla
+        DefaultTableModel model = (DefaultTableModel) newCotTable.getModel();
+        model.addRow(new Object[]{
+            seleccionado.toString(), descripcion, cantidad, precio
+        });
+
+        actualizarTotalCotizacion();
+        itemCant.setText(""); // limpiar campo de cantidad
+
+    } else {
+        JOptionPane.showMessageDialog(this, "Producto no encontrado.");
+    }
+
+} catch (Exception e) {
+    JOptionPane.showMessageDialog(this, "Error al añadir producto: " + e.getMessage());
+}
     }//GEN-LAST:event_addItemActionPerformed
+
+    private void viewCotActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_viewCotActionPerformed
+        String nombreSeleccionado = cotList.getSelectedValue();
+
+if (nombreSeleccionado == null) {
+    JOptionPane.showMessageDialog(this, "Selecciona una cotización.");
+    return;
+}
+
+int idCotizacion = cotizacionesMap.get(nombreSeleccionado);
+
+
+try {
+   
+    DefaultTableModel model = (DefaultTableModel) viewCotTable.getModel();
+    model.setRowCount(0);
+
+   
+    Connection con = connection.getMySQLConnection();
+
+    
+    String sql = "SELECT p.nombre, p.descripcion, cp.cantidad, p.precio " +
+                 "FROM cotizaciones_productos cp " +
+                 "JOIN productos p ON cp.producto_id = p.id " +
+                 "WHERE cp.cotizacion_id = ?";
+    PreparedStatement ps = con.prepareStatement(sql);
+    ps.setInt(1, idCotizacion);
+    ResultSet rs = ps.executeQuery();
+
+    double totalCotizacion = 0.0;
+
+    
+    while (rs.next()) {
+        String nombre = rs.getString("nombre");
+        String descripcion = rs.getString("descripcion");
+        int cantidad = rs.getInt("cantidad");
+        double precio = rs.getDouble("precio");
+
+        model.addRow(new Object[]{nombre, descripcion, cantidad, precio});
+        totalCotizacion += (cantidad * precio);
+    }
+
+    
+    priceField.setText(String.format("%.2f", totalCotizacion));
+
+} catch (Exception e) {
+    JOptionPane.showMessageDialog(this, "Error al cargar detalles: " + e.getMessage());
+}
+    }//GEN-LAST:event_viewCotActionPerformed
+
+    private void searchItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_searchItemActionPerformed
+     String codigoBuscado = searchField.getText().trim();
+
+    if (codigoBuscado.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Ingrese un código para buscar.");
+        return;
+    }
+
+    try {
+        Connection con = connection.getMySQLConnection();
+        String sql = "SELECT id, nombre FROM productos WHERE codigo = ?";
+        PreparedStatement ps = con.prepareStatement(sql);
+        ps.setString(1, codigoBuscado);
+        ResultSet rs = ps.executeQuery();
+
+        productBox.removeAllItems(); // limpiar antes de mostrar el resultado
+
+        if (rs.next()) {
+            int id = rs.getInt("id");
+            String nombre = rs.getString("nombre");
+            ((JComboBox) productBox).addItem(new ItemProducto(id, nombre));
+        } else {
+            JOptionPane.showMessageDialog(this, "Producto no encontrado.");
+        }
+
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Error al buscar producto: " + e.getMessage());
+    }
+    }//GEN-LAST:event_searchItemActionPerformed
+
+    private void deleteItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteItemActionPerformed
+        int fila = newCotTable.getSelectedRow();
+        if (fila != -1) {
+            DefaultTableModel model = (DefaultTableModel) newCotTable.getModel();
+            model.removeRow(fila);
+            actualizarTotalCotizacion();
+        }
+    }//GEN-LAST:event_deleteItemActionPerformed
+
+    private void saveCotActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveCotActionPerformed
+        String nombreCotizacion = JOptionPane.showInputDialog(this, "Ingrese el nombre de la cotización:");
+    if (nombreCotizacion == null || nombreCotizacion.trim().isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Debe ingresar un nombre para la cotización.");
+        return;
+    }
+    nombreCotizacion = nombreCotizacion.trim();
+
+    if (newCotTable.getRowCount() == 0) {
+        JOptionPane.showMessageDialog(this, "Debe agregar al menos un producto.");
+        return;
+    }
+
+    double precioTotal = Double.parseDouble(newPrice.getText());
+
+    
+    List<Connection> conexiones = new ArrayList<>();
+
+try {
+    Connection conMySQL = connection.getMySQLConnection();
+    if (conMySQL != null) conexiones.add(conMySQL);
+
+    Connection conAWS = connection.getAWSConnection();
+    if (conAWS != null) conexiones.add(conAWS);
+
+    Connection conMaria = connection.getMariaDBConnection();
+    if (conMaria != null) conexiones.add(conMaria);
+} catch (Exception ex) {
+    JOptionPane.showMessageDialog(this, "Error al conectar a alguna base de datos: " + ex.getMessage());
+    return;
+}
+
+    try {
+        for (Connection con : conexiones) {
+            con.setAutoCommit(false);
+
+             String codigoCotizacion = generarCodigoCotizacion(con);
+            PreparedStatement psCot = con.prepareStatement(
+                "INSERT INTO cotizaciones (codigo, nombre, cliente_id, fecha, precio_total) VALUES (?, ?, ?, NOW(), ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+             psCot.setString(1, codigoCotizacion);
+            psCot.setString(2, nombreCotizacion);
+            psCot.setInt(3, idCliente); 
+            psCot.setDouble(4, precioTotal);
+            psCot.executeUpdate();
+
+            ResultSet rsCot = psCot.getGeneratedKeys();
+            int idCotizacion = -1;
+            if (rsCot.next()) {
+                idCotizacion = rsCot.getInt(1);
+            }
+            rsCot.close();
+            psCot.close();
+
+            // Insertar productos de la cotización
+            for (int i = 0; i < newCotTable.getRowCount(); i++) {
+                int productoId = (int) newCotTable.getValueAt(i, 0);
+                int cantidad = (int) newCotTable.getValueAt(i, 2);  
+
+                PreparedStatement psDet = con.prepareStatement(
+                    "INSERT INTO cotizaciones_productos (cotizacion_id, producto_id, cantidad) VALUES (?, ?, ?)"
+                );
+                psDet.setInt(1, idCotizacion);
+                psDet.setInt(2, productoId);
+                psDet.setInt(3, cantidad);
+                psDet.executeUpdate();
+                psDet.close();
+            }
+
+            con.commit();
+            con.close();
+        }
+
+        JOptionPane.showMessageDialog(this, "Cotización guardada");
+
+        // Limpieza y actualización
+        newPrice.setText("0.00");
+        ((DefaultTableModel) newCotTable.getModel()).setRowCount(0);
+        cargarCotizaciones(idCliente);
+
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Error al guardar la cotización: " + e.getMessage());
+        for (Connection con : conexiones) {
+            try {
+                if (con != null && !con.isClosed()) con.rollback();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+    }//GEN-LAST:event_saveCotActionPerformed
 
     /**
      * @param args the command line arguments
@@ -326,7 +753,8 @@ public class clientView extends javax.swing.JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new clientView().setVisible(true);
+                
+                new clientView(1).setVisible(true);
             }
         });
     }
@@ -336,15 +764,15 @@ public class clientView extends javax.swing.JFrame {
     private javax.swing.JButton buy;
     private javax.swing.JButton cancelPed;
     private javax.swing.JButton cleanCot;
+    private javax.swing.JList<String> cotList;
     private javax.swing.JPopupMenu cotMenu;
     private javax.swing.JButton delete;
     private javax.swing.JMenuItem deleteItem;
     private javax.swing.JTextField itemCant;
-    private javax.swing.JComboBox<String> jComboBox1;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
-    private javax.swing.JLabel jLabel3;
-    private javax.swing.JList<String> jList1;
+    private javax.swing.JLabel jLabel4;
+    private javax.swing.JLabel jLabel5;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel2;
     private javax.swing.JPanel jPanel3;
@@ -355,9 +783,13 @@ public class clientView extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane4;
     private javax.swing.JTabbedPane jTabbedPane1;
     private javax.swing.JTable newCotTable;
+    private javax.swing.JTextField newPrice;
     private javax.swing.JButton pdf;
+    private javax.swing.JTextField priceField;
+    private javax.swing.JComboBox<String> productBox;
     private javax.swing.JButton saveCot;
     private javax.swing.JTextField searchField;
+    private javax.swing.JButton searchItem;
     private javax.swing.JTable tablePedidos;
     private javax.swing.JButton viewCot;
     private javax.swing.JTable viewCotTable;

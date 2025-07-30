@@ -16,13 +16,13 @@ public class connection {
     public static Connection getMySQLConnection() throws SQLException {
         String url = "jdbc:mysql://localhost:3306/ibarrasa_bd";
         String usuario = "root";
-        String contrasena = "password";
+        String contrasena = "alexis1911";
         return DriverManager.getConnection(url, usuario, contrasena);
     }
 
     // Conexión 2: AWS RDS (MySQL en la nube)
     public static Connection getAWSConnection() throws SQLException {
-        String url = "jdbc:mysql://<tu-endpoint-rds>.rds.amazonaws.com:3306/ibarrasa_bd";
+        String url = "jdbc:mysql://ibarrasabd.c7w2cwc4yz5r.us-east-2.rds.amazonaws.com:3306/ibarrasa_bd";
         String usuario = "ragg";
         String contrasena = "alexis1911";
         return DriverManager.getConnection(url, usuario, contrasena);
