@@ -22,6 +22,115 @@ import javax.swing.table.DefaultTableModel;
 
 public class clientView extends javax.swing.JFrame {
     
+    private void cargarPedidosEnTabla() {
+    DefaultTableModel modelo = new DefaultTableModel();
+    modelo.addColumn("Nombre");
+    modelo.addColumn("Precio Total");
+    modelo.addColumn("Fecha");
+    modelo.addColumn("Estado");
+
+    
+
+    try {
+        Connection con = connection.getMySQLConnection(); // Puedes cambiar la conexión según necesites
+
+    if (con == null) {
+        JOptionPane.showMessageDialog(null, "No se pudo conectar a la base de datos.");
+        return;
+    }
+        PreparedStatement ps = con.prepareStatement(
+            "SELECT nombre, precio_total, fecha, estado FROM pedidos WHERE cliente_id = ?"
+        );
+        ps.setInt(1, idCliente);
+
+        ResultSet rs = ps.executeQuery();
+
+        while (rs.next()) {
+            String nombre = rs.getString("nombre");
+            double total = rs.getDouble("precio_total");
+            Timestamp fecha = rs.getTimestamp("fecha");
+            String estado = rs.getString("estado");
+
+            modelo.addRow(new Object[]{
+                nombre,
+                String.format("$ %.2f", total),
+                fecha.toString(),
+                estado
+            });
+        }
+
+        rs.close();
+        ps.close();
+        con.close();
+
+        tablePedidos.setModel(modelo);
+
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error al cargar pedidos: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+}
+
+    
+    private void eliminarCotizacion(String nombreCot) {
+    if (nombreCot == null || nombreCot.trim().isEmpty()) {
+        JOptionPane.showMessageDialog(null, "Seleccione una cotización válida.");
+        return;
+    }
+
+    int confirm = JOptionPane.showConfirmDialog(null,
+            "¿Está seguro de eliminar la cotización: " + nombreCot + "?", 
+            "Confirmar eliminación", JOptionPane.YES_NO_OPTION);
+
+    if (confirm != JOptionPane.YES_OPTION) return;
+
+    try {
+        Connection[] conexiones = {
+            connection.getMySQLConnection(),
+            connection.getAWSConnection(),
+            connection.getMariaDBConnection()
+        };
+
+        for (Connection con : conexiones) {
+            if (con == null) continue;
+
+            // Buscar ID de la cotización por nombre
+            PreparedStatement psBuscar = con.prepareStatement(
+                "SELECT id FROM cotizaciones WHERE nombre = ? AND cliente_id = ?"
+            );
+            psBuscar.setString(1, nombreCot);
+            psBuscar.setInt(2, idCliente);
+            ResultSet rs = psBuscar.executeQuery();
+
+            int idCotizacion = -1;
+            if (rs.next()) {
+                idCotizacion = rs.getInt("id");
+            }
+            rs.close();
+            psBuscar.close();
+
+            if (idCotizacion != -1) {
+                // Eliminar cotización (FK con ON DELETE CASCADE borra detalles)
+                PreparedStatement psEliminar = con.prepareStatement(
+                    "DELETE FROM cotizaciones WHERE id = ?"
+                );
+                psEliminar.setInt(1, idCotizacion);
+                psEliminar.executeUpdate();
+                psEliminar.close();
+            }
+
+            con.close();
+        }
+
+        JOptionPane.showMessageDialog(null, "Cotización eliminada correctamente.");
+
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error al eliminar: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+}
+
+    
     private String generarCodigoCotizacion(Connection con) throws SQLException {
     String codigo = "COT";
     String sql = "SELECT COUNT(*) AS total FROM cotizaciones";
@@ -102,10 +211,10 @@ public class clientView extends javax.swing.JFrame {
         return nombre;
     }
 
-    // Sobrescribe toString correctamente
+    
     @Override
     public String toString() {
-        return nombre;  // Esto es lo que se mostrará en el combo
+        return nombre;  
     }
 }
     
@@ -167,7 +276,9 @@ public class clientView extends javax.swing.JFrame {
         initComponents();        
         this.idCliente = idCliente;
         cargarCotizaciones(idCliente);
+        cargarPedidosEnTabla();
         prepararNuevaCotizacion();
+        
     }
 
     /**
@@ -206,7 +317,6 @@ public class clientView extends javax.swing.JFrame {
         jScrollPane3 = new javax.swing.JScrollPane();
         newCotTable = new javax.swing.JTable();
         saveCot = new javax.swing.JButton();
-        cleanCot = new javax.swing.JButton();
         searchField = new javax.swing.JTextField();
         jLabel5 = new javax.swing.JLabel();
         newPrice = new javax.swing.JTextField();
@@ -253,8 +363,18 @@ public class clientView extends javax.swing.JFrame {
         pdf.setText("Descargar como PDF");
 
         buy.setText("Realizar Pedido");
+        buy.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                buyActionPerformed(evt);
+            }
+        });
 
         delete.setText("Eliminar");
+        delete.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                deleteActionPerformed(evt);
+            }
+        });
 
         jLabel4.setText("Total:");
 
@@ -320,6 +440,11 @@ public class clientView extends javax.swing.JFrame {
         jScrollPane4.setViewportView(tablePedidos);
 
         cancelPed.setText("Cancelar Pedido");
+        cancelPed.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                cancelPedActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
         jPanel4.setLayout(jPanel4Layout);
@@ -380,8 +505,6 @@ public class clientView extends javax.swing.JFrame {
             }
         });
 
-        cleanCot.setText("Limpiar");
-
         jLabel5.setText("Total:");
 
         searchItem.setText("Buscar:");
@@ -400,8 +523,7 @@ public class clientView extends javax.swing.JFrame {
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(jPanel2Layout.createSequentialGroup()
                         .addComponent(saveCot)
-                        .addGap(311, 311, 311)
-                        .addComponent(cleanCot))
+                        .addGap(379, 379, 379))
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 453, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -450,9 +572,7 @@ public class clientView extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(addItem)))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(saveCot)
-                    .addComponent(cleanCot))
+                .addComponent(saveCot)
                 .addContainerGap(91, Short.MAX_VALUE))
         );
 
@@ -631,97 +751,326 @@ try {
     }//GEN-LAST:event_deleteItemActionPerformed
 
     private void saveCotActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_saveCotActionPerformed
-        String nombreCotizacion = JOptionPane.showInputDialog(this, "Ingrese el nombre de la cotización:");
-    if (nombreCotizacion == null || nombreCotizacion.trim().isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Debe ingresar un nombre para la cotización.");
-        return;
-    }
-    nombreCotizacion = nombreCotizacion.trim();
-
-    if (newCotTable.getRowCount() == 0) {
-        JOptionPane.showMessageDialog(this, "Debe agregar al menos un producto.");
+        
+    String nombreCot = JOptionPane.showInputDialog(null, "Ingrese el nombre de la cotización:");
+    if (nombreCot == null || nombreCot.trim().isEmpty()) {
+        JOptionPane.showMessageDialog(null, "Debe ingresar un nombre válido.");
         return;
     }
 
     double precioTotal = Double.parseDouble(newPrice.getText());
-
-    
-    List<Connection> conexiones = new ArrayList<>();
-
-try {
-    Connection conMySQL = connection.getMySQLConnection();
-    if (conMySQL != null) conexiones.add(conMySQL);
-
-    Connection conAWS = connection.getAWSConnection();
-    if (conAWS != null) conexiones.add(conAWS);
-
-    Connection conMaria = connection.getMariaDBConnection();
-    if (conMaria != null) conexiones.add(conMaria);
-} catch (Exception ex) {
-    JOptionPane.showMessageDialog(this, "Error al conectar a alguna base de datos: " + ex.getMessage());
-    return;
-}
+    java.sql.Date fechaActual = new java.sql.Date(System.currentTimeMillis());
 
     try {
-        for (Connection con : conexiones) {
-            con.setAutoCommit(false);
+        Connection[] conexiones = {
+            connection.getMySQLConnection(),
+            connection.getAWSConnection(),
+            connection.getMariaDBConnection()
+        };
 
-             String codigoCotizacion = generarCodigoCotizacion(con);
+        for (Connection con : conexiones) {
+            if (con == null) continue;
+
+            String codigoCotizacion = generarCodigoCotizacion(con);
             PreparedStatement psCot = con.prepareStatement(
-                "INSERT INTO cotizaciones (codigo, nombre, cliente_id, fecha, precio_total) VALUES (?, ?, ?, NOW(), ?)",
+                "INSERT INTO cotizaciones (codigo, nombre, cliente_id, fecha, precio_total) VALUES (?, ?, ?, ?, ?)",
                 Statement.RETURN_GENERATED_KEYS
             );
-             psCot.setString(1, codigoCotizacion);
-            psCot.setString(2, nombreCotizacion);
-            psCot.setInt(3, idCliente); 
-            psCot.setDouble(4, precioTotal);
+            psCot.setString(1, codigoCotizacion);
+            psCot.setString(2, nombreCot);
+            psCot.setInt(3, idCliente);
+            psCot.setDate(4, fechaActual);
+            psCot.setDouble(5, precioTotal);
             psCot.executeUpdate();
 
-            ResultSet rsCot = psCot.getGeneratedKeys();
+            ResultSet rs = psCot.getGeneratedKeys();
             int idCotizacion = -1;
-            if (rsCot.next()) {
-                idCotizacion = rsCot.getInt(1);
+            if (rs.next()) {
+                idCotizacion = rs.getInt(1);
             }
-            rsCot.close();
+            rs.close();
             psCot.close();
 
-            // Insertar productos de la cotización
-            for (int i = 0; i < newCotTable.getRowCount(); i++) {
-                int productoId = (int) newCotTable.getValueAt(i, 0);
-                int cantidad = (int) newCotTable.getValueAt(i, 2);  
+            if (idCotizacion != -1) {
+                for (int i = 0; i < newCotTable.getRowCount(); i++) {
+                    String nombreProd = newCotTable.getValueAt(i, 0).toString();
+                    int cantidad = (int) newCotTable.getValueAt(i, 2);
 
-                PreparedStatement psDet = con.prepareStatement(
-                    "INSERT INTO cotizaciones_productos (cotizacion_id, producto_id, cantidad) VALUES (?, ?, ?)"
-                );
-                psDet.setInt(1, idCotizacion);
-                psDet.setInt(2, productoId);
-                psDet.setInt(3, cantidad);
-                psDet.executeUpdate();
-                psDet.close();
+                    PreparedStatement psBuscar = con.prepareStatement(
+                        "SELECT id FROM productos WHERE nombre = ?"
+                    );
+                    psBuscar.setString(1, nombreProd);
+                    ResultSet rsProd = psBuscar.executeQuery();
+
+                    if (rsProd.next()) {
+                        int productoId = rsProd.getInt("id");
+
+                        PreparedStatement psDet = con.prepareStatement(
+                            "INSERT INTO cotizaciones_productos (cotizacion_id, producto_id, cantidad) VALUES (?, ?, ?)"
+                        );
+                        psDet.setInt(1, idCotizacion);
+                        psDet.setInt(2, productoId);
+                        psDet.setInt(3, cantidad);
+                        psDet.executeUpdate();
+                        psDet.close();
+                    }
+
+                    rsProd.close();
+                    psBuscar.close();
+                }
             }
 
-            con.commit();
             con.close();
         }
 
-        JOptionPane.showMessageDialog(this, "Cotización guardada");
-
-        // Limpieza y actualización
-        newPrice.setText("0.00");
-        ((DefaultTableModel) newCotTable.getModel()).setRowCount(0);
+        JOptionPane.showMessageDialog(null, "Cotización guardada");
         cargarCotizaciones(idCliente);
-
-    } catch (Exception e) {
-        JOptionPane.showMessageDialog(this, "Error al guardar la cotización: " + e.getMessage());
-        for (Connection con : conexiones) {
-            try {
-                if (con != null && !con.isClosed()) con.rollback();
-            } catch (SQLException ex) {
-                ex.printStackTrace();
-            }
-        }
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error al guardar la cotización: " + ex.getMessage());
+        ex.printStackTrace();
     }
     }//GEN-LAST:event_saveCotActionPerformed
+
+    private void deleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteActionPerformed
+        String seleccion = (String) cotList.getSelectedValue(); // Asegúrate que cotList contenga Strings
+        eliminarCotizacion(seleccion);
+        cargarCotizaciones(idCliente); // Si tienes método para recargar la lista
+    }//GEN-LAST:event_deleteActionPerformed
+
+    private void buyActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buyActionPerformed
+        String nombreCot = cotList.getSelectedValue();
+
+    if (nombreCot == null || nombreCot.trim().isEmpty()) {
+        JOptionPane.showMessageDialog(null, "Seleccione una cotización válida.");
+        return;
+    }
+
+    int confirm = JOptionPane.showConfirmDialog(null,
+            "¿Está seguro de convertir la cotización '" + nombreCot + "' en pedido?",
+            "Confirmar",
+            JOptionPane.YES_NO_OPTION);
+
+    if (confirm != JOptionPane.YES_OPTION) return;
+
+    
+
+    try {
+        Connection[] conexiones = {
+        connection.getMySQLConnection(),
+        connection.getAWSConnection(),
+        connection.getMariaDBConnection()
+    };
+        for (Connection con : conexiones) {
+            if (con == null) {
+                System.out.println("Una conexión no está disponible, se omite.");
+                continue;
+            }
+
+            // 1) Obtener cotización
+            PreparedStatement psCot = con.prepareStatement(
+                "SELECT id, codigo, nombre, cliente_id, fecha FROM cotizaciones WHERE nombre = ? AND cliente_id = ?"
+            );
+            psCot.setString(1, nombreCot);
+            psCot.setInt(2, idCliente);
+            ResultSet rsCot = psCot.executeQuery();
+
+            if (!rsCot.next()) {
+                rsCot.close();
+                psCot.close();
+                con.close();
+                continue;
+            }
+
+            int idCotizacion = rsCot.getInt("id");
+            String codigoCot = rsCot.getString("codigo");
+            String nombreCotDB = rsCot.getString("nombre");
+            int clienteCot = rsCot.getInt("cliente_id");
+            Timestamp fechaCot = rsCot.getTimestamp("fecha");
+
+            rsCot.close();
+            psCot.close();
+
+            // 2) Obtener productos de la cotización y calcular precio total
+            PreparedStatement psProdCot = con.prepareStatement(
+                "SELECT cp.producto_id, cp.cantidad, p.precio FROM cotizaciones_productos cp " +
+                "JOIN productos p ON cp.producto_id = p.id WHERE cp.cotizacion_id = ?"
+            );
+            psProdCot.setInt(1, idCotizacion);
+            ResultSet rsProd = psProdCot.executeQuery();
+
+            // Guardar productos temporalmente
+            List<int[]> productos = new ArrayList<>();
+            double precioTotal = 0.0;
+
+            while (rsProd.next()) {
+                int productoId = rsProd.getInt("producto_id");
+                int cantidad = rsProd.getInt("cantidad");
+                double precioUnitario = rsProd.getDouble("precio");
+
+                productos.add(new int[]{productoId, cantidad});
+                precioTotal += cantidad * precioUnitario;
+            }
+
+            rsProd.close();
+            psProdCot.close();
+
+            // 3) Insertar nuevo pedido con precio_total
+            PreparedStatement psInsertPed = con.prepareStatement(
+                "INSERT INTO pedidos (codigo, nombre, cliente_id, fecha, estado, precio_total) VALUES (?, ?, ?, ?, ?, ?)",
+                Statement.RETURN_GENERATED_KEYS
+            );
+            psInsertPed.setString(1, codigoCot);
+            psInsertPed.setString(2, nombreCotDB);
+            psInsertPed.setInt(3, clienteCot);
+            psInsertPed.setTimestamp(4, fechaCot);
+            psInsertPed.setString(5, "Realizado");
+            psInsertPed.setDouble(6, precioTotal);
+            psInsertPed.executeUpdate();
+
+            ResultSet rsKeys = psInsertPed.getGeneratedKeys();
+            int idPedido;
+            if (rsKeys.next()) {
+                idPedido = rsKeys.getInt(1);
+            } else {
+                psInsertPed.close();
+                con.close();
+                throw new SQLException("No se pudo obtener el ID del pedido.");
+            }
+            rsKeys.close();
+            psInsertPed.close();
+
+            // 4) Insertar productos en pedidos_productos y actualizar stock
+            PreparedStatement psInsertProdPed = con.prepareStatement(
+                "INSERT INTO pedidos_productos (pedido_id, producto_id, cantidad) VALUES (?, ?, ?)"
+            );
+
+            for (int[] prod : productos) {
+                int productoId = prod[0];
+                int cantidad = prod[1];
+
+                psInsertProdPed.setInt(1, idPedido);
+                psInsertProdPed.setInt(2, productoId);
+                psInsertProdPed.setInt(3, cantidad);
+                psInsertProdPed.executeUpdate();
+
+                // Actualizar stock
+                PreparedStatement psUpdateStock = con.prepareStatement(
+                    "UPDATE productos SET stock = stock - ? WHERE id = ?"
+                );
+                psUpdateStock.setInt(1, cantidad);
+                psUpdateStock.setInt(2, productoId);
+                psUpdateStock.executeUpdate();
+                psUpdateStock.close();
+            }
+
+            psInsertProdPed.close();
+
+            // 5) Eliminar cotización
+            PreparedStatement psEliminarCot = con.prepareStatement(
+                "DELETE FROM cotizaciones WHERE id = ?"
+            );
+            psEliminarCot.setInt(1, idCotizacion);
+            psEliminarCot.executeUpdate();
+            psEliminarCot.close();
+
+            con.close();
+        }
+
+        JOptionPane.showMessageDialog(null, "Pedido Realizado");
+        cargarCotizaciones(idCliente);
+        cargarPedidosEnTabla();
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error al realizar pedido: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+    }//GEN-LAST:event_buyActionPerformed
+
+    private void cancelPedActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelPedActionPerformed
+        int filaSeleccionada = tablePedidos.getSelectedRow();
+
+    if (filaSeleccionada == -1) {
+        JOptionPane.showMessageDialog(null, "Seleccione un pedido para cancelar.");
+        return;
+    }
+
+    String nombrePedido = tablePedidos.getValueAt(filaSeleccionada, 0).toString();
+
+    int confirm = JOptionPane.showConfirmDialog(null,
+        "¿Está seguro de cancelar el pedido: " + nombrePedido + "?",
+        "Confirmar cancelación", JOptionPane.YES_NO_OPTION);
+
+    if (confirm != JOptionPane.YES_OPTION) return;
+
+    try {
+        Connection[] conexiones = {
+            connection.getMySQLConnection(),
+            connection.getAWSConnection(),
+            connection.getMariaDBConnection()
+        };
+
+        for (Connection con : conexiones) {
+            if (con == null) continue;
+
+            // Buscar ID del pedido
+            int pedidoId = -1;
+            PreparedStatement psBuscar = con.prepareStatement(
+                "SELECT id FROM pedidos WHERE nombre = ? AND cliente_id = ?"
+            );
+            psBuscar.setString(1, nombrePedido);
+            psBuscar.setInt(2, idCliente);
+            ResultSet rs = psBuscar.executeQuery();
+
+            if (rs.next()) {
+                pedidoId = rs.getInt("id");
+            }
+            rs.close();
+            psBuscar.close();
+
+            if (pedidoId != -1) {
+                // Obtener productos del pedido
+                PreparedStatement psProductos = con.prepareStatement(
+                    "SELECT producto_id, cantidad FROM pedidos_productos WHERE pedido_id = ?"
+                );
+                psProductos.setInt(1, pedidoId);
+                ResultSet rsProductos = psProductos.executeQuery();
+
+                // Restaurar stock
+                while (rsProductos.next()) {
+                    int productoId = rsProductos.getInt("producto_id");
+                    int cantidad = rsProductos.getInt("cantidad");
+
+                    PreparedStatement psActualizarStock = con.prepareStatement(
+                        "UPDATE productos SET stock = stock + ? WHERE id = ?"
+                    );
+                    psActualizarStock.setInt(1, cantidad);
+                    psActualizarStock.setInt(2, productoId);
+                    psActualizarStock.executeUpdate();
+                    psActualizarStock.close();
+                }
+
+                rsProductos.close();
+                psProductos.close();
+
+                // Eliminar el pedido (se eliminan también los productos por ON DELETE CASCADE)
+                PreparedStatement psEliminar = con.prepareStatement(
+                    "DELETE FROM pedidos WHERE id = ?"
+                );
+                psEliminar.setInt(1, pedidoId);
+                psEliminar.executeUpdate();
+                psEliminar.close();
+            }
+
+            con.close();
+        }
+
+        JOptionPane.showMessageDialog(null, "Pedido cancelado y stock restaurado.");
+        cargarPedidosEnTabla(); // Refrescar tabla
+
+    } catch (SQLException ex) {
+        JOptionPane.showMessageDialog(null, "Error al cancelar el pedido: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+    }//GEN-LAST:event_cancelPedActionPerformed
 
     /**
      * @param args the command line arguments
@@ -763,7 +1112,6 @@ try {
     private javax.swing.JButton addItem;
     private javax.swing.JButton buy;
     private javax.swing.JButton cancelPed;
-    private javax.swing.JButton cleanCot;
     private javax.swing.JList<String> cotList;
     private javax.swing.JPopupMenu cotMenu;
     private javax.swing.JButton delete;
