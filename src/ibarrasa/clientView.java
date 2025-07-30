@@ -12,6 +12,9 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import javax.swing.table.DefaultTableModel;
+import com.itextpdf.text.*;
+import com.itextpdf.text.pdf.*;
+import java.io.FileOutputStream;
 
 /**
  *
@@ -23,6 +26,209 @@ import javax.swing.table.DefaultTableModel;
 
 
 public class clientView extends javax.swing.JFrame {
+    
+    public void exportarFacturaPedido(int pedidoId) {
+    JFileChooser fileChooser = new JFileChooser();
+    fileChooser.setSelectedFile(new java.io.File("Factura_Pedido_" + pedidoId + ".pdf"));
+    int option = fileChooser.showSaveDialog(null);
+    if (option != JFileChooser.APPROVE_OPTION) return;
+    String rutaArchivo = fileChooser.getSelectedFile().getAbsolutePath();
+
+    Document documento = new Document();
+    try {
+        PdfWriter.getInstance(documento, new FileOutputStream(rutaArchivo));
+        documento.open();
+
+        Font tituloFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20);
+        Font subtituloFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+        Font textoFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
+
+        Paragraph titulo = new Paragraph("Factura - Pedido", tituloFont);
+        titulo.setAlignment(Element.ALIGN_CENTER);
+        documento.add(titulo);
+        documento.add(new Paragraph(" "));
+
+        Connection conn = connection.getMySQLConnection();
+
+        // Consulta pedido
+        String sqlPed = "SELECT nombre, fecha, estado, precio_total FROM pedidos WHERE id = ? AND cliente_id = ?";
+        PreparedStatement psPed = conn.prepareStatement(sqlPed);
+        psPed.setInt(1, pedidoId);
+        psPed.setInt(2, idCliente);
+        ResultSet rsPed = psPed.executeQuery();
+
+        if (!rsPed.next()) {
+            JOptionPane.showMessageDialog(null, "Pedido no encontrado.");
+            rsPed.close();
+            psPed.close();
+            conn.close();
+            documento.close();
+            return;
+        }
+
+        String nombre = rsPed.getString("nombre");
+        String fecha = rsPed.getString("fecha");
+        String estado = rsPed.getString("estado");
+        double total = rsPed.getDouble("precio_total");
+
+        documento.add(new Paragraph("Pedido: " + nombre, subtituloFont));
+        documento.add(new Paragraph("Fecha: " + fecha, textoFont));
+        documento.add(new Paragraph("Estado: " + estado, textoFont));
+        documento.add(new Paragraph("Cliente ID: " + idCliente, textoFont));
+        documento.add(new Paragraph(" "));
+
+        // Tabla productos
+        PdfPTable tabla = new PdfPTable(4);
+        tabla.setWidthPercentage(100);
+        tabla.setWidths(new float[]{4f, 1f, 2f, 2f});
+        tabla.addCell("Producto");
+        tabla.addCell("Cantidad");
+        tabla.addCell("Precio Unitario");
+        tabla.addCell("Subtotal");
+
+        String sqlProd = "SELECT p.nombre, pp.cantidad, p.precio, (pp.cantidad * p.precio) as subtotal " +
+                         "FROM pedidos_productos pp " +
+                         "JOIN productos p ON pp.producto_id = p.id " +
+                         "WHERE pp.pedido_id = ?";
+        PreparedStatement psProd = conn.prepareStatement(sqlProd);
+        psProd.setInt(1, pedidoId);
+        ResultSet rsProd = psProd.executeQuery();
+
+        while (rsProd.next()) {
+            tabla.addCell(rsProd.getString("nombre"));
+            tabla.addCell(String.valueOf(rsProd.getInt("cantidad")));
+            tabla.addCell(String.format("$%.2f", rsProd.getDouble("precio")));
+            tabla.addCell(String.format("$%.2f", rsProd.getDouble("subtotal")));
+        }
+        rsProd.close();
+        psProd.close();
+
+        documento.add(tabla);
+        documento.add(new Paragraph(" "));
+
+        Paragraph pTotal = new Paragraph("Total a pagar: $" + String.format("%.2f", total), subtituloFont);
+        pTotal.setAlignment(Element.ALIGN_RIGHT);
+        documento.add(pTotal);
+
+        rsPed.close();
+        psPed.close();
+        conn.close();
+
+        documento.close();
+
+        JOptionPane.showMessageDialog(null, "Factura PDF generada:\n" + rutaArchivo);
+
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(null, "Error generando PDF: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+}
+
+    
+    public void exportarFacturaCotizacion(String nombreCotizacion) {
+    if (nombreCotizacion == null || nombreCotizacion.trim().isEmpty()) {
+        JOptionPane.showMessageDialog(null, "Seleccione una cotización válida.");
+        return;
+    }
+
+    JFileChooser fileChooser = new JFileChooser();
+    fileChooser.setSelectedFile(new java.io.File("Factura_Cotizacion_" + nombreCotizacion + ".pdf"));
+    int option = fileChooser.showSaveDialog(null);
+    if (option != JFileChooser.APPROVE_OPTION) return;
+    String rutaArchivo = fileChooser.getSelectedFile().getAbsolutePath();
+
+    Document documento = new Document();
+    try {
+        PdfWriter.getInstance(documento, new FileOutputStream(rutaArchivo));
+        documento.open();
+
+        Font tituloFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 20);
+        Font subtituloFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14);
+        Font textoFont = FontFactory.getFont(FontFactory.HELVETICA, 12);
+
+        // Título factura
+        Paragraph titulo = new Paragraph("Factura - Cotización", tituloFont);
+        titulo.setAlignment(Element.ALIGN_CENTER);
+        documento.add(titulo);
+        documento.add(new Paragraph(" "));
+
+        // Conexión
+        Connection conn = connection.getMySQLConnection();
+
+        // Consulta principal cotizacion (id, nombre, fecha, precio_total)
+        String sqlCot = "SELECT id, nombre, fecha, precio_total FROM cotizaciones WHERE nombre = ? AND cliente_id = ?";
+        PreparedStatement psCot = conn.prepareStatement(sqlCot);
+        psCot.setString(1, nombreCotizacion);
+        psCot.setInt(2, idCliente);
+        ResultSet rsCot = psCot.executeQuery();
+
+        if (!rsCot.next()) {
+            JOptionPane.showMessageDialog(null, "Cotización no encontrada.");
+            rsCot.close();
+            psCot.close();
+            conn.close();
+            documento.close();
+            return;
+        }
+
+        int idCot = rsCot.getInt("id");
+        String nombre = rsCot.getString("nombre");
+        String fecha = rsCot.getString("fecha");
+        double total = rsCot.getDouble("precio_total");
+
+        documento.add(new Paragraph("Cotización: " + nombre, subtituloFont));
+        documento.add(new Paragraph("Fecha: " + fecha, textoFont));
+        documento.add(new Paragraph("Cliente ID: " + idCliente, textoFont));
+        documento.add(new Paragraph(" "));
+        
+        // Tabla productos
+        PdfPTable tabla = new PdfPTable(4);
+        tabla.setWidthPercentage(100);
+        tabla.setWidths(new float[]{4f, 1f, 2f, 2f});
+        tabla.addCell("Producto");
+        tabla.addCell("Cantidad");
+        tabla.addCell("Precio Unitario");
+        tabla.addCell("Subtotal");
+
+        // Consulta productos de la cotización
+        String sqlProd = "SELECT p.nombre, cp.cantidad, p.precio, (cp.cantidad * p.precio) as subtotal " +
+                         "FROM cotizaciones_productos cp " +
+                         "JOIN productos p ON cp.producto_id = p.id " +
+                         "WHERE cp.cotizacion_id = ?";
+        PreparedStatement psProd = conn.prepareStatement(sqlProd);
+        psProd.setInt(1, idCot);
+        ResultSet rsProd = psProd.executeQuery();
+
+        while (rsProd.next()) {
+            tabla.addCell(rsProd.getString("nombre"));
+            tabla.addCell(String.valueOf(rsProd.getInt("cantidad")));
+            tabla.addCell(String.format("$%.2f", rsProd.getDouble("precio")));
+            tabla.addCell(String.format("$%.2f", rsProd.getDouble("subtotal")));
+        }
+        rsProd.close();
+        psProd.close();
+
+        documento.add(tabla);
+        documento.add(new Paragraph(" "));
+
+        // Total
+        Paragraph pTotal = new Paragraph("Total a pagar: $" + String.format("%.2f", total), subtituloFont);
+        pTotal.setAlignment(Element.ALIGN_RIGHT);
+        documento.add(pTotal);
+
+        rsCot.close();
+        psCot.close();
+        conn.close();
+
+        documento.close();
+
+        JOptionPane.showMessageDialog(null, "Factura PDF generada:\n" + rutaArchivo);
+
+    } catch (Exception ex) {
+        JOptionPane.showMessageDialog(null, "Error generando PDF: " + ex.getMessage());
+        ex.printStackTrace();
+    }
+}
     
     private void inicializarChatbot() {
     cargarCategorias();
@@ -412,6 +618,7 @@ private void cargarCategorias() {
         jScrollPane4 = new javax.swing.JScrollPane();
         tablePedidos = new javax.swing.JTable();
         cancelPed = new javax.swing.JButton();
+        pedPDF = new javax.swing.JButton();
         jPanel2 = new javax.swing.JPanel();
         jLabel1 = new javax.swing.JLabel();
         productBox = new javax.swing.JComboBox<>();
@@ -469,6 +676,11 @@ private void cargarCategorias() {
         jScrollPane2.setViewportView(viewCotTable);
 
         pdf.setText("Descargar como PDF");
+        pdf.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pdfActionPerformed(evt);
+            }
+        });
 
         buy.setText("Realizar Pedido");
         buy.addActionListener(new java.awt.event.ActionListener() {
@@ -554,6 +766,13 @@ private void cargarCategorias() {
             }
         });
 
+        pedPDF.setText("Descargar PDF");
+        pedPDF.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                pedPDFActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout jPanel4Layout = new javax.swing.GroupLayout(jPanel4);
         jPanel4.setLayout(jPanel4Layout);
         jPanel4Layout.setHorizontalGroup(
@@ -561,10 +780,11 @@ private void cargarCategorias() {
             .addGroup(jPanel4Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane4)
-                    .addGroup(jPanel4Layout.createSequentialGroup()
-                        .addComponent(cancelPed)
-                        .addGap(515, 515, 515)))
+                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 651, Short.MAX_VALUE)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel4Layout.createSequentialGroup()
+                        .addComponent(pedPDF)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(cancelPed)))
                 .addContainerGap())
         );
         jPanel4Layout.setVerticalGroup(
@@ -573,7 +793,9 @@ private void cargarCategorias() {
                 .addContainerGap()
                 .addComponent(jScrollPane4, javax.swing.GroupLayout.PREFERRED_SIZE, 207, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(cancelPed)
+                .addGroup(jPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(cancelPed)
+                    .addComponent(pedPDF))
                 .addContainerGap(98, Short.MAX_VALUE))
         );
 
@@ -1304,6 +1526,21 @@ try {
         message.setText("");
     }//GEN-LAST:event_sendActionPerformed
 
+    private void pdfActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pdfActionPerformed
+        String cotSeleccionada = cotList.getSelectedValue();
+        exportarFacturaCotizacion(cotSeleccionada);
+    }//GEN-LAST:event_pdfActionPerformed
+
+    private void pedPDFActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pedPDFActionPerformed
+        int filaSel = tablePedidos.getSelectedRow();
+    if (filaSel == -1) {
+        JOptionPane.showMessageDialog(null, "Seleccione un pedido válido.");
+        return;
+    }
+    int pedidoId = (int) tablePedidos.getValueAt(filaSel, 0); 
+    exportarFacturaPedido(pedidoId);
+    }//GEN-LAST:event_pedPDFActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -1367,6 +1604,7 @@ try {
     private javax.swing.JTable newCotTable;
     private javax.swing.JTextField newPrice;
     private javax.swing.JButton pdf;
+    private javax.swing.JButton pedPDF;
     private javax.swing.JTextField priceField;
     private javax.swing.JComboBox<String> productBox;
     private javax.swing.JTextArea responses;
